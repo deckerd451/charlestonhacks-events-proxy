@@ -16,17 +16,18 @@ export default {
       });
       const html = await res.text();
 
-      // 🧩 Updated regex tuned to Chucktown Startups structure
       const events = [];
-      const eventRegex = /<article[^>]*>[\s\S]*?<h2[^>]*>(.*?)<\/h2>[\s\S]*?<time[^>]*datetime="([^"]+)"[^>]*>(.*?)<\/time>[\s\S]*?<a[^>]+href="([^"]+)"[^>]*>[^<]*<\/a>/gi;
+      // Match div-based event listings (used on chucktownstartups.com)
+      const regex =
+        /<div class="em-item[^"]*">[\s\S]*?<div class="em-item-title">([^<]+)<\/div>[\s\S]*?(?:<abbr class="em-date"[^>]*title="([^"]+)")?[\s\S]*?<\/div>/gi;
 
       let match;
-      while ((match = eventRegex.exec(html)) !== null) {
-        const [_, title, dateISO, dateText, link] = match;
+      while ((match = regex.exec(html)) !== null) {
+        const [_, title, dateAttr] = match;
         events.push({
-          title: title.replace(/<[^>]+>/g, "").trim(),
-          date: dateText.trim(),
-          link: link.startsWith("http") ? link : new URL(link, target).href,
+          title: title.trim(),
+          date: dateAttr ? new Date(dateAttr).toLocaleDateString() : "TBA",
+          link: target,
         });
       }
 
