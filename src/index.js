@@ -42,4 +42,8 @@ export default {
     } catch (err) {
       return new Response(JSON.stringify({ error: err.message }), {
         status: 500,
-        headers: { "Access-Control-Allow-Origi
+        headers: { "Access-Control-Allow-Origin": "*" },
+      });
+    }
+  },
+};
