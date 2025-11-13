@@ -11,17 +11,33 @@ export default {
     }
 
     try {
-      // ✅ Plain HTTP fetch — no Browser Rendering required
-      const res = await fetch(target);
+      const res = await fetch(target, {
+        headers: { "User-Agent": "Mozilla/5.0 (Cloudflare Worker)" },
+      });
       const html = await res.text();
 
-      // 🧠 Very simple pattern match to prove it works
-      const events = [...html.matchAll(/HH2025|Hackathon|Event|(\d{1,2}\/\d{1,2}\/\d{4})/g)]
-        .map(m => m[0])
-        .slice(0, 10);
+      // 🧩 Extract event title, date, and link
+      const events = [];
+      const eventRegex =
+        /<a[^>]+href="([^"]+)"[^>]*>([^<]+)<\/a>[\s\S]*?(?:<time[^>]*>([^<]+)<\/time>)?/gi;
+
+      let match;
+      while ((match = eventRegex.exec(html)) !== null) {
+        const [_, link, title, date] = match;
+        if (title && link) {
+          events.push({
+            title: title.trim(),
+            date: date ? date.trim() : null,
+            link: link.startsWith("http") ? link : new URL(link, target).href,
+          });
+        }
+      }
 
       return new Response(JSON.stringify({ events }), {
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
       });
     } catch (err) {
       return new Response(JSON.stringify({ error: err.message }), {
