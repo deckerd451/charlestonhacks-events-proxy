@@ -11,7 +11,7 @@
   "kv_namespaces": [
     {
       "binding": "CACHE",
-      "id": "charlestonhacks_events_cache_v3"
+      "id": "charlestonhacks_events_cache"
     }
   ],
 
