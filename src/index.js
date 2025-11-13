@@ -1,45 +1,30 @@
 /**
- * CharlestonHacks Events Hybrid Worker v5
+ * CharlestonHacks Events Hybrid Worker v4
  * ----------------------------------------
- * Multi-source aggregator for Charleston’s tech + entrepreneurship ecosystem.
- * Runs automatically every 3 hours via Cloudflare Cron Trigger.
- *
- * Sources:
- *  - Charleston Digital Corridor
- *  - Startup Grind Charleston
- *  - Charleston Technology Group (Meetup)
- *  - Eventbrite (Charleston Tech & Business)
- *  - SC Competes Innovation Events
- *  - Fallback curated JSON
- *
- * Features:
- *  - KV caching (3-hour TTL)
- *  - Auto-refresh via Cron
- *  - CORS enabled for public use
- *  - Timezone normalization
+ * Adds automatic cron refresh and uses KV caching for Charleston tech events.
  */
 
 export default {
   async fetch(request, env, ctx) {
-    return handleRequest(env);
+    return handleRequest(request, env);
   },
 
-  // 🕒 Cron trigger: automatically refresh cache
+  // 🔁 Automatically refresh cache every 3 hours (via Cloudflare Cron Trigger)
   async scheduled(event, env, ctx) {
-    console.log("🕒 CRON: Refreshing CharlestonHacks event cache...");
-    await handleRequest(env, true);
+    console.log("⏰ Scheduled refresh triggered");
+    await handleRequest(new Request("https://charlestonhacks.com"), env);
   },
 };
 
-async function handleRequest(env, forceRefresh = false) {
-  const cacheKey = "charlestonhacks_events_cache_v5";
+// 🧠 Shared handler logic
+async function handleRequest(request, env) {
+  const cacheKey = "charlestonhacks_events_cache_v3";
   const CACHE_TTL = 3 * 60 * 60; // 3 hours (seconds)
 
-  // 🧠 Serve cached version unless forceRefresh is true
-  if (env.CACHE && !forceRefresh) {
+  // Serve cached copy if available
+  if (env.CACHE) {
     const cached = await env.CACHE.get(cacheKey);
     if (cached) {
-      console.log("💾 Serving cached events...");
       return new Response(cached, {
         headers: {
           "Content-Type": "application/json",
@@ -49,7 +34,7 @@ async function handleRequest(env, forceRefresh = false) {
     }
   }
 
-  // 🧩 Date normalization utility
+  // --- 👇 keep all your existing event fetching code here ---
   function parseDate(str) {
     if (!str) return null;
     try {
@@ -67,7 +52,6 @@ async function handleRequest(env, forceRefresh = false) {
     return null;
   }
 
-  // 🛠 Fetch helper
   async function trySource(name, url, extractor) {
     try {
       const res = await fetch(url, {
@@ -84,7 +68,7 @@ async function handleRequest(env, forceRefresh = false) {
     }
   }
 
-  // 1️⃣ Charleston Digital Corridor
+  // --- Charleston Digital Corridor ---
   const cdcEvents = await trySource(
     "Charleston Digital Corridor",
     "https://www.charlestondigital.com/events",
@@ -100,7 +84,7 @@ async function handleRequest(env, forceRefresh = false) {
     }
   );
 
-  // 2️⃣ Startup Grind Charleston
+  // --- Startup Grind Charleston ---
   const sgEvents = await trySource(
     "Startup Grind Charleston",
     "https://www.startupgrind.com/charleston/",
@@ -116,7 +100,7 @@ async function handleRequest(env, forceRefresh = false) {
     }
   );
 
-  // 3️⃣ Charleston Technology Group (Meetup)
+  // --- Charleston Technology Group (Meetup) ---
   const meetupEvents = await trySource(
     "Charleston Technology Group",
     "https://www.meetup.com/charleston-technology-group/",
@@ -138,40 +122,7 @@ async function handleRequest(env, forceRefresh = false) {
     }
   );
 
-  // 4️⃣ Eventbrite Charleston Tech
-  const ebEvents = await trySource(
-    "Eventbrite Charleston Tech",
-    "https://www.eventbrite.com/d/sc--charleston/tech-events/",
-    (html) => {
-      const regex =
-        /<div[^>]*class="eds-event-card-content__primary-content"[^>]*>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>[\s\S]*?<time[^>]*datetime="([^"]+)"/g;
-      const matches = [...html.matchAll(regex)];
-      return matches.map((m) => ({
-        title: m[2].replace(/<.*?>/g, "").trim(),
-        startDate: parseDate(m[3]) || new Date().toISOString(),
-        location: "Charleston, SC",
-        link: m[1],
-      }));
-    }
-  );
-
-  // 5️⃣ SC Competes
-  const scCompetesEvents = await trySource(
-    "SC Competes Innovation Events",
-    "https://www.sccompetes.org/events/",
-    (html) => {
-      const regex = /<h3[^>]*>(.*?)<\/h3>[\s\S]*?<time[^>]*>(.*?)<\/time>/g;
-      const matches = [...html.matchAll(regex)];
-      return matches.map((m) => ({
-        title: m[1].replace(/<.*?>/g, "").trim(),
-        startDate: parseDate(m[2]),
-        location: "South Carolina",
-        link: "https://www.sccompetes.org/events/",
-      }));
-    }
-  );
-
-  // 6️⃣ Fallback curated events
+  // --- Fallback ---
   const fallback = [
     {
       title: "Charleston Tech Happy Hour",
@@ -193,15 +144,7 @@ async function handleRequest(env, forceRefresh = false) {
     },
   ];
 
-  // 🧮 Combine + clean + sort
-  const allEvents = [
-    ...cdcEvents,
-    ...sgEvents,
-    ...meetupEvents,
-    ...ebEvents,
-    ...scCompetesEvents,
-    ...fallback,
-  ]
+  const allEvents = [...cdcEvents, ...sgEvents, ...meetupEvents, ...fallback]
     .filter((e) => e && e.title)
     .map((e) => ({
       ...e,
@@ -218,7 +161,7 @@ async function handleRequest(env, forceRefresh = false) {
 
   const payload = JSON.stringify({ events: sorted }, null, 2);
 
-  // 💾 Save to KV
+  // Cache result for 3 hours
   if (env.CACHE) await env.CACHE.put(cacheKey, payload, { expirationTtl: CACHE_TTL });
 
   return new Response(payload, {
