@@ -1,32 +1,31 @@
-/**
- * CharlestonHacks Events Proxy – Cloudflare Worker
- * -----------------------------------------------
- * v3 Configuration for wrangler.jsonc
- */
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
+  // 🌴 CharlestonHacks Events Proxy Worker
+  // --------------------------------------
+  // Fetches and caches Charleston tech/entrepreneurial events every 3 hours.
+
   "name": "charlestonhacks-events-proxy",
   "main": "src/index.js",
-  "compatibility_date": "2025-11-11",
+  "compatibility_date": "2024-11-13",
 
-  // Enable dashboard observability
-  "observability": {
-    "enabled": true
-  },
-
-  // Optional Smart Placement (keeps latency low)
-  // "placement": { "mode": "smart" },
-
-  // KV binding for caching event data
+  // ✅ KV storage for caching responses
   "kv_namespaces": [
     {
       "binding": "CACHE",
-      "id": "YOUR_CACHE_NAMESPACE_ID"
+      "id": "charlestonhacks_events_cache_v3"
     }
   ],
 
-  // Optional: Add cron triggers to auto-refresh cache
+  // 🕒 Auto-refresh every 3 hours via cron trigger
   "triggers": {
-    "crons": ["0 */3 * * *"] // every 3 hours
-  }
+    "crons": ["0 */3 * * *"]
+  },
+
+  // ⚙️ Environment configuration
+  "vars": {
+    "TZ": "America/New_York"
+  },
+
+  // 🚀 Deployment configuration
+  "usage_model": "bundled",
+  "compatibility_flags": ["nodejs_compat"]
 }
