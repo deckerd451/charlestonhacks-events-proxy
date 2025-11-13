@@ -1,31 +1,40 @@
 {
   // 🌴 CharlestonHacks Events Proxy Worker
   // --------------------------------------
-  // Fetches and caches Charleston tech/entrepreneurial events every 3 hours.
+  // Aggregates Charleston tech + entrepreneurial events from multiple sources.
+  // Auto-refreshes every 3 hours and caches results in KV for fast access.
 
+  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "charlestonhacks-events-proxy",
   "main": "src/index.js",
   "compatibility_date": "2024-11-13",
 
-  // ✅ KV storage for caching responses
+  // ✅ KV namespace for caching event data
   "kv_namespaces": [
     {
       "binding": "CACHE",
-      "id": "5e7c639f4a6a42339172bf891a14d257"
+      "id": "5e7c639f4a6a42339172bf891a14d257"  // ← use your real KV namespace ID
     }
   ],
 
-  // 🕒 Auto-refresh every 3 hours via cron trigger
+  // 🕒 Cron trigger: run every 3 hours (auto refresh)
   "triggers": {
     "crons": ["0 */3 * * *"]
   },
 
-  // ⚙️ Environment configuration
+  // ⚙️ Environment variables
   "vars": {
     "TZ": "America/New_York"
   },
 
-  // 🚀 Deployment configuration
+  // 🌐 Enable NodeJS compatibility for HTML parsing
+  "compatibility_flags": ["nodejs_compat"],
+
+  // 🚀 Deployment model
   "usage_model": "bundled",
-  "compatibility_flags": ["nodejs_compat"]
+
+  // 📊 Enable Cloudflare dashboard observability (optional)
+  "observability": {
+    "enabled": true
+  }
 }
