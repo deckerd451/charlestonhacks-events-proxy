@@ -16,21 +16,18 @@ export default {
       });
       const html = await res.text();
 
-      // 🧩 Extract event title, date, and link
+      // 🧩 Updated regex tuned to Chucktown Startups structure
       const events = [];
-      const eventRegex =
-        /<a[^>]+href="([^"]+)"[^>]*>([^<]+)<\/a>[\s\S]*?(?:<time[^>]*>([^<]+)<\/time>)?/gi;
+      const eventRegex = /<article[^>]*>[\s\S]*?<h2[^>]*>(.*?)<\/h2>[\s\S]*?<time[^>]*datetime="([^"]+)"[^>]*>(.*?)<\/time>[\s\S]*?<a[^>]+href="([^"]+)"[^>]*>[^<]*<\/a>/gi;
 
       let match;
       while ((match = eventRegex.exec(html)) !== null) {
-        const [_, link, title, date] = match;
-        if (title && link) {
-          events.push({
-            title: title.trim(),
-            date: date ? date.trim() : null,
-            link: link.startsWith("http") ? link : new URL(link, target).href,
-          });
-        }
+        const [_, title, dateISO, dateText, link] = match;
+        events.push({
+          title: title.replace(/<[^>]+>/g, "").trim(),
+          date: dateText.trim(),
+          link: link.startsWith("http") ? link : new URL(link, target).href,
+        });
       }
 
       return new Response(JSON.stringify({ events }), {
